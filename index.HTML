@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemistry Element Matcher</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f8ff;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .game-area {
+            margin: 20px 0;
+        }
+        .score-display {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .card {
+            height: 100px;
+            background-color: #3498db;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.3s, background-color 0.3s;
+            user-select: none;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .card.flipped {
+            background-color: #2ecc71;
+            transform: rotateY(180deg);
+        }
+        .card.matched {
+            background-color: #f1c40f;
+            cursor: default;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .difficulty-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .periodic-table-btn {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+        }
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow: auto;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chemistry Element Matcher</h1>
+        
+        <div class="difficulty-selector">
+            <label for="difficulty">Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+        
+        <div class="score-display">
+            Score: <span id="score">0</span> | Pairs: <span id="pairs">0</span>/<span id="total-pairs">8</span>
+        </div>
+        
+        <div class="game-area">
+            <div class="card-container" id="game-board"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="start-btn">Start New Game</button>
+            <button class="btn" id="hint-btn">Hint</button>
+        </div>
+        
+        <div class="periodic-table-btn">
+            <button class="btn" id="show-table">Show Periodic Table</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="periodic-table-modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h2>Periodic Table Reference</h2>
+            <div id="periodic-table-container">
+                <!-- Simple periodic table will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements data - symbol, name, and atomic number
+        const elements = [
+            { symbol: 'H', name: 'Hydrogen', number: 1 },
+            { symbol: 'He', name: 'Helium', number: 2 },
+            { symbol: 'Li', name: 'Lithium', number: 3 },
+            { symbol: 'Be', name: 'Beryllium', number: 4 },
+            { symbol: 'B', name: 'Boron', number: 5 },
+            { symbol: 'C', name: 'Carbon', number: 6 },
+            { symbol: 'N', name: 'Nitrogen', number: 7 },
+            { symbol: 'O', name: 'Oxygen', number: 8 },
+            { symbol: 'F', name: 'Fluorine', number: 9 },
+            { symbol: 'Ne', name: 'Neon', number: 10 },
+            { symbol: 'Na', name: 'Sodium', number: 11 },
+            { symbol: 'Mg', name: 'Magnesium', number: 12 },
+            { symbol: 'Al', name: 'Aluminum', number: 13 },
+            { symbol: 'Si', name: 'Silicon', number: 14 },
+            { symbol: 'P', name: 'Phosphorus', number: 15 },
+            { symbol: 'S', name: 'Sulfur', number: 16 },
+            { symbol: 'Cl', name: 'Chlorine', number: 17 },
+            { symbol: 'Ar', name: 'Argon', number: 18 },
+            { symbol: 'K', name: 'Potassium', number: 19 },
+            { symbol: 'Ca', name: 'Calcium', number: 20 },
+            { symbol: 'Fe', name: 'Iron', number: 26 },
+            { symbol: 'Cu', name: 'Copper', number: 29 },
+            { symbol: 'Zn', name: 'Zinc', number: 30 },
+            { symbol: 'Ag', name: 'Silver', number: 47 },
+            { symbol: 'Au', name: 'Gold', number: 79 },
+            { symbol: 'Hg', name: 'Mercury', number: 80 },
+            { symbol: 'Pb', name: 'Lead', number: 82 },
+            { symbol: 'U', name: 'Uranium', number: 92 }
+        ];
+
+        // Game variables
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let score = 0;
+        let gameStarted = false;
+        let totalPairs = 8;
+
+        // DOM elements
+        const gameBoard = document.getElementById('game-board');
+        const startBtn = document.getElementById('start-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const scoreDisplay = document.getElementById('score');
+        const pairsDisplay = document.getElementById('pairs');
+        const totalPairsDisplay = document.getElementById('total-pairs');
+        const difficultySelector = document.getElementById('difficulty');
+        const showTableBtn = document.getElementById('show-table');
+        const modal = document.getElementById('periodic-table-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+
+        // Start new game
+        function startNewGame() {
+            // Reset game state
+            flippedCards = [];
+            matchedPairs = 0;
+            score = 0;
+            gameStarted = true;
+            
+            // Update displays
+            scoreDisplay.textContent = score;
+            pairsDisplay.textContent = matchedPairs;
+            
+            // Clear board
+            gameBoard.innerHTML = '';
+            
+            // Set number of pairs based on difficulty
+            const difficulty = difficultySelector.value;
+            if (difficulty === 'easy') {
+                totalPairs = 6;
+            } else if (difficulty === 'medium') {
+                totalPairs = 8;
+            } else {
+                totalPairs = 10;
+            }
+            
+            totalPairsDisplay.textContent = totalPairs;
+            
+            // Create cards
+            createCards();
+        }
+        
+        // Create cards for the game
+        function createCards() {
+            // Shuffle and select elements
+            const shuffledElements = [...elements].sort(() => 0.5 - Math.random());
+            const selectedElements = shuffledElements.slice(0, totalPairs);
+            
+            // Create pairs (symbol and name)
+            cards = [];
+            selectedElements.forEach(element => {
+                cards.push({
+                    id: `symbol-${element.number}`,
+                    content: element.symbol,
+                    pairId: element.number,
+                    flipped: false,
+                    matched: false
+                });
+                
+                cards.push({
+                    id: `name-${element.number}`,
+                    content: element.name,
+                    pairId: element.number,
+                    flipped: false,
+                    matched: false
+                });
+            });
+            
+            // Shuffle cards
+            cards.sort(() => 0.5 - Math.random());
+            
+            // Render cards
+            renderCards();
+        }
+        
+        // Render cards on the board
+        function renderCards() {
+            gameBoard.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.flipped ? 'flipped' : ''} ${card.matched ? 'matched' : ''}`;
+                cardElement.setAttribute('data-id', card.id);
+                
+                if (card.flipped || card.matched) {
+                    cardElement.textContent = card.content;
+                } else {
+                    cardElement.textContent = '?';
+                }
+                
+                cardElement.addEventListener('click', () => flipCard(card.id));
+                gameBoard.appendChild(cardElement);
+            });
+        }
+        
+        // Flip a card
+        function flipCard(cardId) {
+            if (!gameStarted) return;
+            
+            const cardIndex = cards.findIndex(card => card.id === cardId);
+            const card = cards[cardIndex];
+            
+            // Ignore if card is already flipped or matched
+            if (card.flipped || card.matched) return;
+            
+            // Ignore if two cards are already flipped
+            if (flippedCards.length >= 2) return;
+            
+            // Flip the card
+            card.flipped = true;
+            flippedCards.push(card);
+            
+            // Render the updated board
+            renderCards();
+            
+            // Check for a match if two cards are flipped
+            if (flippedCards.length === 2) {
+                setTimeout(checkForMatch, 1000);
+            }
+        }
+        
+        // Check if the two flipped cards match
+        function checkForMatch() {
+            if (flippedCards.length !== 2) return;
+            
+            const [card1, card2] = flippedCards;
+            
+            if (card1.pairId === card2.pairId) {
+                // Match found
+                card1.matched = true;
+                card2.matched = true;
+                matchedPairs++;
+                score += 10;
+            } else {
+                // No match
+                card1.flipped = false;
+                card2.flipped = false;
+                score = Math.max(0, score - 1);
+            }
+            
+            // Update displays
+            scoreDisplay.textContent = score;
+            pairsDisplay.textContent = matchedPairs;
+            
+            // Clear flipped cards
+            flippedCards = [];
+            
+            // Render the updated board
+            renderCards();
+            
+            // Check if game is complete
+            if (matchedPairs === totalPairs) {
+                setTimeout(() => {
+                    alert(`Congratulations! You've matched all pairs with a score of ${score}!`);
+                }, 500);
+            }
+        }
+        
+        // Show a hint (briefly flip all cards)
+        function showHint() {
+            if (!gameStarted) return;
+            
+            // Temporarily flip all cards
+            cards.forEach(card => {
+                if (!card.matched) {
+                    card.flipped = true;
+                }
+            });
+            
+            // Render the board with all cards flipped
+            renderCards();
+            
+            // Deduct points for using a hint
+            score = Math.max(0, score - 5);
+            scoreDisplay.textContent = score;
+            
+            // Flip cards back after a delay
+            setTimeout(() => {
+                cards.forEach(card => {
+                    if (!card.matched) {
+                        card.flipped = false;
+                    }
+                });
+                renderCards();
+            }, 1000);
+        }
+        
+        // Show periodic table modal
+        function showPeriodicTable() {
+            const container = document.getElementById('periodic-table-container');
+            container.innerHTML = '';
+            
+            // Create a simple periodic table display
+            const table = document.createElement('div');
+            table.style.display = 'grid';
+            table.style.gridTemplateColumns = 'repeat(9, 1fr)';
+            table.style.gap = '5px';
+            
+            elements.forEach(element => {
+                const elementBox = document.createElement('div');
+                elementBox.style.border = '1px solid #ddd';
+                elementBox.style.padding = '5px';
+                elementBox.style.textAlign = 'center';
+                elementBox.style.backgroundColor = '#f9f9f9';
+                
+                elementBox.innerHTML = `
+                    <div style="font-weight: bold;">${element.symbol}</div>
+                    <div style="font-size: 12px;">${element.name}</div>
+                    <div style="font-size: 10px;">${element.number}</div>
+                `;
+                
+                table.appendChild(elementBox);
+            });
+            
+            container.appendChild(table);
+            modal.style.display = 'block';
+        }
+        
+        // Close modal
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startNewGame);
+        hintBtn.addEventListener('click', showHint);
+        showTableBtn.addEventListener('click', showPeriodicTable);
+        closeModalBtn.addEventListener('click', closeModal);
+        
+        // Initialize the game
+        startNewGame();
+    </script>
+</body>
+</html>
